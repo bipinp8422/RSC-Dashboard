@@ -122,7 +122,7 @@ if selected_store:
 # ─────────────────────────────────────────────
 @st.cache_resource
 def load_logo():
-    return Image.open("canon-logo.png")
+    return Image.open("canon-press-centre-canon-logo.png")
 
 logo = load_logo()
 
@@ -276,3 +276,4 @@ st.plotly_chart(
     ),
     use_container_width=True
 )
+
