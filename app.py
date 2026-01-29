@@ -13,17 +13,30 @@ st.set_page_config(
 )
 
 # ─────────────────────────────────────────────
+# FILE UPLOAD (REQUIRED FOR CLOUD)
+# ─────────────────────────────────────────────
+uploaded_file = st.file_uploader(
+    "📂 Upload MOM RSC Performance File (.xlsb)",
+    type=["xlsb", "xlsx"]
+)
+
+if uploaded_file is None:
+    st.warning("👆 Please upload the sales file to continue")
+    st.stop()
+
+# ─────────────────────────────────────────────
 # FAST DATA LOADING
 # ─────────────────────────────────────────────
 @st.cache_data(show_spinner="Loading data...")
-def load_data():
+def load_data(file):
     return pd.read_excel(
-        r"D:\Main Working Files\MOM RSC Performance_Jan'24 To Dec'25- North  South_Region V1.xlsb",
+        file,
         sheet_name="RAW data",
-        skiprows=1
+        skiprows=1,
+        engine="pyxlsb" if file.name.endswith(".xlsb") else None
     )
 
-df = load_data()
+df = load_data(uploaded_file)
 
 # ─────────────────────────────────────────────
 # CLEAN COLUMN NAMES
@@ -67,9 +80,8 @@ else:
 # ─────────────────────────────────────────────
 df["Year"] = df[DATE_COL].dt.year
 df["Month_No"] = df[DATE_COL].dt.month
-df["Month_Name"] = df[DATE_COL].dt.strftime("%b")  # Jan, Feb, Mar...
+df["Month_Name"] = df[DATE_COL].dt.strftime("%b")
 
-# Keep only valid data years
 df = df[df["Year"].between(2024, 2025)]
 
 # ─────────────────────────────────────────────
@@ -85,36 +97,28 @@ st.markdown(
 # ─────────────────────────────────────────────
 st.sidebar.title("🔍 Filters")
 
-# Year filter
-year_list = sorted(df["Year"].dropna().unique())
 selected_year = st.sidebar.multiselect(
     "Year",
-    year_list,
-    default=year_list
+    sorted(df["Year"].dropna().unique()),
+    default=sorted(df["Year"].dropna().unique())
 )
 
-# City filter
-city_list = sorted(df["City"].dropna().unique())
 selected_city = st.sidebar.multiselect(
     "City",
-    city_list,
-    default=city_list
+    sorted(df["City"].dropna().unique()),
+    default=sorted(df["City"].dropna().unique())
 )
 
-# Store filter
-store_list = sorted(df["Storename"].dropna().unique())
 selected_store = st.sidebar.multiselect(
     "Store Name",
-    store_list,
-    default=store_list
+    sorted(df["Storename"].dropna().unique()),
+    default=sorted(df["Storename"].dropna().unique())
 )
 
 # ─────────────────────────────────────────────
 # APPLY FILTERS (PASSED ONLY)
 # ─────────────────────────────────────────────
-df_filtered = df.copy()
-
-df_filtered = df_filtered[df_filtered["Status"] == "Passed"]
+df_filtered = df[df["Status"] == "Passed"]
 
 if selected_year:
     df_filtered = df_filtered[df_filtered["Year"].isin(selected_year)]
@@ -126,15 +130,14 @@ if selected_store:
     df_filtered = df_filtered[df_filtered["Storename"].isin(selected_store)]
 
 # ─────────────────────────────────────────────
-# Load Logo
+# LOGO UPLOAD (OPTIONAL)
 # ─────────────────────────────────────────────
-@st.cache_resource
-def load_logo():
-    return Image.open(
-        r"C:\Users\ce-vipin.kp\Downloads\canon-press-centre-canon-logo.png"
-    )
+logo_file = st.sidebar.file_uploader(
+    "Upload Logo (optional)",
+    type=["png", "jpg", "jpeg"]
+)
 
-logo = load_logo()
+logo = Image.open(logo_file) if logo_file else None
 
 # ─────────────────────────────────────────────
 # Header
@@ -142,7 +145,8 @@ logo = load_logo()
 col1, col2 = st.columns([0.15, 0.85])
 
 with col1:
-    st.image(logo, width=140)
+    if logo:
+        st.image(logo, width=140)
 
 with col2:
     st.markdown(
@@ -159,13 +163,10 @@ with col2:
         unsafe_allow_html=True
     )
 
-# ─────────────────────────────────────────────
-# Last Updated
-# ─────────────────────────────────────────────
 st.markdown(f"**Last Updated:** {datetime.now().strftime('%d %B %Y')}")
 
 # ─────────────────────────────────────────────
-# MONTH-WISE SALES TREND (ORDERED)
+# MONTH-WISE SALES TREND
 # ─────────────────────────────────────────────
 month_qty = (
     df_filtered
@@ -188,7 +189,7 @@ fig_month.update_layout(xaxis_tickangle=-30)
 st.plotly_chart(fig_month, use_container_width=True)
 
 # ─────────────────────────────────────────────
-# TOP 5 PRODUCT CATEGORIES – QTY & VALUE
+# TOP 5 PRODUCT CATEGORIES
 # ─────────────────────────────────────────────
 colA, colB = st.columns(2)
 
@@ -200,16 +201,11 @@ with colA:
         .head(5)
     )
 
-    fig_cat_qty = px.bar(
-        cat_qty,
-        x="Product Category",
-        y="Sales Quantity",
-        text="Sales Quantity",
-        title="Top 5 Product Categories – Quantity"
+    st.plotly_chart(
+        px.bar(cat_qty, x="Product Category", y="Sales Quantity",
+               text="Sales Quantity", title="Top 5 Product Categories – Quantity"),
+        use_container_width=True
     )
-    fig_cat_qty.update_traces(textposition="inside")
-    fig_cat_qty.update_layout(xaxis_tickangle=-30)
-    st.plotly_chart(fig_cat_qty, use_container_width=True)
 
 with colB:
     cat_val = (
@@ -219,86 +215,55 @@ with colB:
         .head(5)
     )
 
-    fig_cat_val = px.bar(
-        cat_val,
-        x="Product Category",
-        y="Sales Value",
-        text="Sales Value",
-        title="Top 5 Product Categories – Value"
+    st.plotly_chart(
+        px.bar(cat_val, x="Product Category", y="Sales Value",
+               text="Sales Value", title="Top 5 Product Categories – Value"),
+        use_container_width=True
     )
-    fig_cat_val.update_traces(textposition="inside")
-    fig_cat_val.update_layout(xaxis_tickangle=-30)
-    st.plotly_chart(fig_cat_val, use_container_width=True)
 
 # ─────────────────────────────────────────────
-# TOP 5 PRODUCTS & STORES
+# TOP PRODUCTS & STORES
 # ─────────────────────────────────────────────
-st.markdown("### 🏆 Top Performers")
-
 colC, colD = st.columns(2)
 
 with colC:
-    top5_products = (
+    top_products = (
         df_filtered.groupby("Model Name", as_index=False)["Sales Quantity"]
-        .sum()
-        .sort_values("Sales Quantity", ascending=False)
-        .head(5)
+        .sum().sort_values("Sales Quantity", ascending=False).head(5)
     )
 
-    fig_prod = px.bar(
-        top5_products,
-        x="Model Name",
-        y="Sales Quantity",
-        text="Sales Quantity",
-        title="Top 5 Best Seller Products"
+    st.plotly_chart(
+        px.bar(top_products, x="Model Name", y="Sales Quantity",
+               text="Sales Quantity", title="Top 5 Best Seller Products"),
+        use_container_width=True
     )
-    fig_prod.update_traces(textposition="inside")
-    fig_prod.update_layout(xaxis_tickangle=-30)
-    st.plotly_chart(fig_prod, use_container_width=True)
 
 with colD:
-    top5_stores = (
+    top_stores = (
         df_filtered.groupby("Storename", as_index=False)["Sales Quantity"]
-        .sum()
-        .sort_values("Sales Quantity", ascending=False)
-        .head(5)
+        .sum().sort_values("Sales Quantity", ascending=False).head(5)
     )
 
-    fig_store = px.bar(
-        top5_stores,
-        x="Storename",
-        y="Sales Quantity",
-        text="Sales Quantity",
-        title="Top 5 Stores"
+    st.plotly_chart(
+        px.bar(top_stores, x="Storename", y="Sales Quantity",
+               text="Sales Quantity", title="Top 5 Stores"),
+        use_container_width=True
     )
-    fig_store.update_traces(textposition="inside")
-    fig_store.update_layout(xaxis_tickangle=-30)
-    st.plotly_chart(fig_store, use_container_width=True)
 
 # ─────────────────────────────────────────────
-# RUNNING (CUMULATIVE) LINE – TOP 10 SELLERS
+# RUNNING LINE – TOP 10 SELLERS
 # ─────────────────────────────────────────────
-st.markdown("### 📈 Running Sales Contribution – Top 10 Sellers")
-
-top10_sellers = (
-    df_filtered
-    .groupby("Name", as_index=False)["Sales Quantity"]
-    .sum()
-    .sort_values("Sales Quantity", ascending=False)
-    .head(10)
+top10 = (
+    df_filtered.groupby("Name", as_index=False)["Sales Quantity"]
+    .sum().sort_values("Sales Quantity", ascending=False).head(10)
 )
 
-top10_sellers = top10_sellers.sort_values("Sales Quantity")
-top10_sellers["Running Quantity"] = top10_sellers["Sales Quantity"].cumsum()
+top10 = top10.sort_values("Sales Quantity")
+top10["Running Quantity"] = top10["Sales Quantity"].cumsum()
 
-fig_running = px.line(
-    top10_sellers,
-    x="Name",
-    y="Running Quantity",
-    markers=True,
-    title="Running (Cumulative) Sales Quantity – Top 10 Sellers"
+st.plotly_chart(
+    px.line(top10, x="Name", y="Running Quantity",
+            markers=True,
+            title="Running (Cumulative) Sales Quantity – Top 10 Sellers"),
+    use_container_width=True
 )
-
-fig_running.update_layout(xaxis_tickangle=-30)
-
-st.plotly_chart(fig_running, use_container_width=True)
