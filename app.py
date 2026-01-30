@@ -13,7 +13,7 @@ st.set_page_config(
 )
 
 # ─────────────────────────────────────────────
-# FAST DATA LOADING (FILE IN ROOT)
+# FAST DATA LOADING
 # ─────────────────────────────────────────────
 @st.cache_data(show_spinner="Loading data...")
 def load_data():
@@ -32,26 +32,21 @@ df = load_data()
 df.columns = df.columns.astype(str).str.strip()
 
 # ─────────────────────────────────────────────
-# AUTO-DETECT REFER DATE COLUMN
+# AUTO-DETECT DATE COLUMN
 # ─────────────────────────────────────────────
 possible_date_cols = [
-    "Refer Date",
-    "ReferDate",
-    "Reference Date",
-    "Ref Date",
-    "Invoice Date",
-    "Date"
+    "Refer Date", "ReferDate", "Reference Date",
+    "Ref Date", "Invoice Date", "Date"
 ]
 
 DATE_COL = next((c for c in possible_date_cols if c in df.columns), None)
 
 if DATE_COL is None:
     st.error("❌ Refer Date column not found")
-    st.write("Available columns:", df.columns.tolist())
     st.stop()
 
 # ─────────────────────────────────────────────
-# EXCEL SAFE DATE CONVERSION
+# SAFE DATE CONVERSION
 # ─────────────────────────────────────────────
 if pd.api.types.is_numeric_dtype(df[DATE_COL]):
     df[DATE_COL] = pd.to_datetime(
@@ -64,7 +59,7 @@ else:
     df[DATE_COL] = pd.to_datetime(df[DATE_COL], errors="coerce")
 
 # ─────────────────────────────────────────────
-# YEAR & MONTH CREATION
+# YEAR & MONTH
 # ─────────────────────────────────────────────
 df["Year"] = df[DATE_COL].dt.year
 df["Month_No"] = df[DATE_COL].dt.month
@@ -109,6 +104,12 @@ selected_name = st.sidebar.multiselect(
     default=sorted(df["Name"].dropna().unique())
 )
 
+selected_source = st.sidebar.multiselect(
+    "Source Of Lead",
+    sorted(df["Source Of Lead"].dropna().unique()),
+    default=sorted(df["Source Of Lead"].dropna().unique())
+)
+
 # ─────────────────────────────────────────────
 # APPLY FILTERS
 # ─────────────────────────────────────────────
@@ -126,6 +127,9 @@ if selected_store:
 if selected_name:
     df_filtered = df_filtered[df_filtered["Name"].isin(selected_name)]
 
+if selected_source:
+    df_filtered = df_filtered[df_filtered["Source Of Lead"].isin(selected_source)]
+
 # ─────────────────────────────────────────────
 # LOAD LOGO
 # ─────────────────────────────────────────────
@@ -136,7 +140,7 @@ def load_logo():
 logo = load_logo()
 
 # ─────────────────────────────────────────────
-# Header
+# HEADER
 # ─────────────────────────────────────────────
 col1, col2 = st.columns([0.15, 0.85])
 
@@ -158,9 +162,6 @@ with col2:
         unsafe_allow_html=True
     )
 
-# ─────────────────────────────────────────────
-# Last Updated
-# ─────────────────────────────────────────────
 st.markdown(f"**Last Updated:** {datetime.now().strftime('%d %B %Y')}")
 
 # ─────────────────────────────────────────────
@@ -186,7 +187,7 @@ st.plotly_chart(
 )
 
 # ─────────────────────────────────────────────
-# TOP 5 PRODUCT CATEGORIES
+# TOP PRODUCT CATEGORIES
 # ─────────────────────────────────────────────
 colA, colB = st.columns(2)
 
@@ -254,8 +255,6 @@ leaderboard = (
     .head(10)
 )
 
-leaderboard["Rank"] = range(1, len(leaderboard) + 1)
-
 st.plotly_chart(
     px.bar(
         leaderboard,
@@ -265,9 +264,33 @@ st.plotly_chart(
         text="Sales Quantity",
         title="🏆 Top 10 Sellers – Leadership Board"
     ).update_layout(
+        yaxis=dict(autorange="reversed")
+    ),
+    use_container_width=True
+)
+
+# ─────────────────────────────────────────────
+# SOURCE OF LEAD PERFORMANCE
+# ─────────────────────────────────────────────
+lead_source_perf = (
+    df_filtered
+    .groupby("Source Of Lead", as_index=False)["Sales Quantity"]
+    .sum()
+    .sort_values("Sales Quantity", ascending=False)
+)
+
+st.plotly_chart(
+    px.bar(
+        lead_source_perf,
+        x="Sales Quantity",
+        y="Source Of Lead",
+        orientation="h",
+        text="Sales Quantity",
+        title="📌 Source Of Lead vs Sales Quantity"
+    ).update_layout(
         yaxis=dict(autorange="reversed"),
         xaxis_title="Sales Quantity",
-        yaxis_title="Seller Name"
+        yaxis_title="Source Of Lead"
     ),
     use_container_width=True
 )
