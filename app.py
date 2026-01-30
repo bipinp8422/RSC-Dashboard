@@ -179,27 +179,29 @@ st.plotly_chart(
 )
 
 # ─────────────────────────────────────────────
-# CITY-WISE SALES TREND  ✅ ADDED
+# CITY-WISE SALES TREND (ALL CITIES VISIBLE ✅)
 # ─────────────────────────────────────────────
 city_qty = (
     df_filtered
     .groupby("City", as_index=False)["Sales Quantity"]
     .sum()
-    .sort_values("Sales Quantity", ascending=False)
+    .sort_values("Sales Quantity", ascending=True)
 )
 
-st.plotly_chart(
-    px.bar(
-        city_qty,
-        x="City",
-        y="Sales Quantity",
-        text="Sales Quantity",
-        title="City-wise Sales Trend (Quantity – Passed Only)"
-    )
-    .update_traces(textposition="inside")
-    .update_layout(xaxis_tickangle=-30),
-    use_container_width=True
+fig_city = px.bar(
+    city_qty,
+    x="Sales Quantity",
+    y="City",
+    orientation="h",
+    text="Sales Quantity",
+    title="City-wise Sales Trend (Quantity – Passed Only)"
 )
+
+fig_city.update_layout(
+    height=max(600, len(city_qty) * 28)
+)
+
+st.plotly_chart(fig_city, use_container_width=True)
 
 # ─────────────────────────────────────────────
 # CUSTOMER TYPE
