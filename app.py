@@ -64,7 +64,7 @@ else:
     df[DATE_COL] = pd.to_datetime(df[DATE_COL], errors="coerce")
 
 # ─────────────────────────────────────────────
-# YEAR & MONTH CREATION (ORDER SAFE)
+# YEAR & MONTH CREATION
 # ─────────────────────────────────────────────
 df["Year"] = df[DATE_COL].dt.year
 df["Month_No"] = df[DATE_COL].dt.month
@@ -103,8 +103,14 @@ selected_store = st.sidebar.multiselect(
     default=sorted(df["Storename"].dropna().unique())
 )
 
+selected_name = st.sidebar.multiselect(
+    "Name",
+    sorted(df["Name"].dropna().unique()),
+    default=sorted(df["Name"].dropna().unique())
+)
+
 # ─────────────────────────────────────────────
-# APPLY FILTERS (PASSED ONLY)
+# APPLY FILTERS
 # ─────────────────────────────────────────────
 df_filtered = df[df["Status"] == "Passed"]
 
@@ -117,8 +123,11 @@ if selected_city:
 if selected_store:
     df_filtered = df_filtered[df_filtered["Storename"].isin(selected_store)]
 
+if selected_name:
+    df_filtered = df_filtered[df_filtered["Name"].isin(selected_name)]
+
 # ─────────────────────────────────────────────
-# LOAD LOGO (ROOT)
+# LOAD LOGO
 # ─────────────────────────────────────────────
 @st.cache_resource
 def load_logo():
@@ -164,21 +173,20 @@ month_qty = (
     .sort_values("Month_No")
 )
 
-fig_month = px.bar(
-    month_qty,
-    x="Month_Name",
-    y="Sales Quantity",
-    text="Sales Quantity",
-    title="Month-wise Sales Trend (Quantity – Passed Only)"
+st.plotly_chart(
+    px.bar(
+        month_qty,
+        x="Month_Name",
+        y="Sales Quantity",
+        text="Sales Quantity",
+        title="Month-wise Sales Trend (Quantity – Passed Only)"
+    ).update_traces(textposition="inside")
+     .update_layout(xaxis_tickangle=-30),
+    use_container_width=True
 )
 
-fig_month.update_traces(textposition="inside")
-fig_month.update_layout(xaxis_tickangle=-30)
-
-st.plotly_chart(fig_month, use_container_width=True)
-
 # ─────────────────────────────────────────────
-# TOP 5 PRODUCT CATEGORIES – QTY & VALUE
+# TOP 5 PRODUCT CATEGORIES
 # ─────────────────────────────────────────────
 colA, colB = st.columns(2)
 
@@ -187,15 +195,10 @@ with colA:
         df_filtered.groupby("Product Category", as_index=False)["Sales Quantity"]
         .sum().sort_values("Sales Quantity", ascending=False).head(5)
     )
-
     st.plotly_chart(
-        px.bar(
-            cat_qty,
-            x="Product Category",
-            y="Sales Quantity",
-            text="Sales Quantity",
-            title="Top 5 Product Categories – Quantity"
-        ),
+        px.bar(cat_qty, x="Product Category", y="Sales Quantity",
+               text="Sales Quantity",
+               title="Top 5 Product Categories – Quantity"),
         use_container_width=True
     )
 
@@ -204,15 +207,10 @@ with colB:
         df_filtered.groupby("Product Category", as_index=False)["Sales Value"]
         .sum().sort_values("Sales Value", ascending=False).head(5)
     )
-
     st.plotly_chart(
-        px.bar(
-            cat_val,
-            x="Product Category",
-            y="Sales Value",
-            text="Sales Value",
-            title="Top 5 Product Categories – Value"
-        ),
+        px.bar(cat_val, x="Product Category", y="Sales Value",
+               text="Sales Value",
+               title="Top 5 Product Categories – Value"),
         use_container_width=True
     )
 
@@ -226,15 +224,10 @@ with colC:
         df_filtered.groupby("Model Name", as_index=False)["Sales Quantity"]
         .sum().sort_values("Sales Quantity", ascending=False).head(5)
     )
-
     st.plotly_chart(
-        px.bar(
-            top_products,
-            x="Model Name",
-            y="Sales Quantity",
-            text="Sales Quantity",
-            title="Top 5 Best Seller Products"
-        ),
+        px.bar(top_products, x="Model Name", y="Sales Quantity",
+               text="Sales Quantity",
+               title="Top 5 Best Seller Products"),
         use_container_width=True
     )
 
@@ -243,37 +236,38 @@ with colD:
         df_filtered.groupby("Storename", as_index=False)["Sales Quantity"]
         .sum().sort_values("Sales Quantity", ascending=False).head(5)
     )
-
     st.plotly_chart(
-        px.bar(
-            top_stores,
-            x="Storename",
-            y="Sales Quantity",
-            text="Sales Quantity",
-            title="Top 5 Stores"
-        ),
+        px.bar(top_stores, x="Storename", y="Sales Quantity",
+               text="Sales Quantity",
+               title="Top 5 Stores"),
         use_container_width=True
     )
 
 # ─────────────────────────────────────────────
-# RUNNING (CUMULATIVE) LINE – TOP 10 SELLERS
+# LEADERSHIP BOARD – TOP 10 SELLERS
 # ─────────────────────────────────────────────
-top10 = (
-    df_filtered.groupby("Name", as_index=False)["Sales Quantity"]
-    .sum().sort_values("Sales Quantity", ascending=False).head(10)
+leaderboard = (
+    df_filtered
+    .groupby("Name", as_index=False)["Sales Quantity"]
+    .sum()
+    .sort_values("Sales Quantity", ascending=False)
+    .head(10)
 )
 
-top10 = top10.sort_values("Sales Quantity")
-top10["Running Quantity"] = top10["Sales Quantity"].cumsum()
+leaderboard["Rank"] = range(1, len(leaderboard) + 1)
 
 st.plotly_chart(
-    px.line(
-        top10,
-        x="Name",
-        y="Running Quantity",
-        markers=True,
-        title="Running (Cumulative) Sales Quantity – Top 10 Sellers"
+    px.bar(
+        leaderboard,
+        x="Sales Quantity",
+        y="Name",
+        orientation="h",
+        text="Sales Quantity",
+        title="🏆 Top 10 Sellers – Leadership Board"
+    ).update_layout(
+        yaxis=dict(autorange="reversed"),
+        xaxis_title="Sales Quantity",
+        yaxis_title="Seller Name"
     ),
     use_container_width=True
 )
-
