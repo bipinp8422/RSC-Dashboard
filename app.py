@@ -110,6 +110,11 @@ selected_source = st.sidebar.multiselect(
     default=sorted(df["Source Of Lead"].dropna().unique())
 )
 
+chart_type = st.sidebar.selectbox(
+    "📊 Select Chart Type",
+    ["Bar", "Line", "Area", "Pie"]
+)
+
 # ─────────────────────────────────────────────
 # APPLY FILTERS
 # ─────────────────────────────────────────────
@@ -187,64 +192,6 @@ st.plotly_chart(
 )
 
 # ─────────────────────────────────────────────
-# TOP PRODUCT CATEGORIES
-# ─────────────────────────────────────────────
-colA, colB = st.columns(2)
-
-with colA:
-    cat_qty = (
-        df_filtered.groupby("Product Category", as_index=False)["Sales Quantity"]
-        .sum().sort_values("Sales Quantity", ascending=False).head(5)
-    )
-    st.plotly_chart(
-        px.bar(cat_qty, x="Product Category", y="Sales Quantity",
-               text="Sales Quantity",
-               title="Top 5 Product Categories – Quantity"),
-        use_container_width=True
-    )
-
-with colB:
-    cat_val = (
-        df_filtered.groupby("Product Category", as_index=False)["Sales Value"]
-        .sum().sort_values("Sales Value", ascending=False).head(5)
-    )
-    st.plotly_chart(
-        px.bar(cat_val, x="Product Category", y="Sales Value",
-               text="Sales Value",
-               title="Top 5 Product Categories – Value"),
-        use_container_width=True
-    )
-
-# ─────────────────────────────────────────────
-# TOP PRODUCTS & STORES
-# ─────────────────────────────────────────────
-colC, colD = st.columns(2)
-
-with colC:
-    top_products = (
-        df_filtered.groupby("Model Name", as_index=False)["Sales Quantity"]
-        .sum().sort_values("Sales Quantity", ascending=False).head(5)
-    )
-    st.plotly_chart(
-        px.bar(top_products, x="Model Name", y="Sales Quantity",
-               text="Sales Quantity",
-               title="Top 5 Best Seller Products"),
-        use_container_width=True
-    )
-
-with colD:
-    top_stores = (
-        df_filtered.groupby("Storename", as_index=False)["Sales Quantity"]
-        .sum().sort_values("Sales Quantity", ascending=False).head(5)
-    )
-    st.plotly_chart(
-        px.bar(top_stores, x="Storename", y="Sales Quantity",
-               text="Sales Quantity",
-               title="Top 5 Stores"),
-        use_container_width=True
-    )
-
-# ─────────────────────────────────────────────
 # LEADERSHIP BOARD – TOP 10 SELLERS
 # ─────────────────────────────────────────────
 leaderboard = (
@@ -263,14 +210,12 @@ st.plotly_chart(
         orientation="h",
         text="Sales Quantity",
         title="🏆 Top 10 Sellers – Leadership Board"
-    ).update_layout(
-        yaxis=dict(autorange="reversed")
-    ),
+    ).update_layout(yaxis=dict(autorange="reversed")),
     use_container_width=True
 )
 
 # ─────────────────────────────────────────────
-# SOURCE OF LEAD PERFORMANCE
+# SOURCE OF LEAD – DYNAMIC CHART
 # ─────────────────────────────────────────────
 lead_source_perf = (
     df_filtered
@@ -279,18 +224,39 @@ lead_source_perf = (
     .sort_values("Sales Quantity", ascending=False)
 )
 
-st.plotly_chart(
-    px.bar(
+if chart_type == "Bar":
+    fig = px.bar(
         lead_source_perf,
         x="Sales Quantity",
         y="Source Of Lead",
         orientation="h",
         text="Sales Quantity",
         title="📌 Source Of Lead vs Sales Quantity"
-    ).update_layout(
-        yaxis=dict(autorange="reversed"),
-        xaxis_title="Sales Quantity",
-        yaxis_title="Source Of Lead"
-    ),
-    use_container_width=True
-)
+    ).update_layout(yaxis=dict(autorange="reversed"))
+
+elif chart_type == "Line":
+    fig = px.line(
+        lead_source_perf,
+        x="Source Of Lead",
+        y="Sales Quantity",
+        markers=True,
+        title="📌 Source Of Lead vs Sales Quantity"
+    )
+
+elif chart_type == "Area":
+    fig = px.area(
+        lead_source_perf,
+        x="Source Of Lead",
+        y="Sales Quantity",
+        title="📌 Source Of Lead vs Sales Quantity"
+    )
+
+else:  # Pie
+    fig = px.pie(
+        lead_source_perf,
+        names="Source Of Lead",
+        values="Sales Quantity",
+        title="📌 Source Of Lead Contribution (%)"
+    )
+
+st.plotly_chart(fig, use_container_width=True)
