@@ -248,7 +248,7 @@ st.plotly_chart(
 )
 
 # ─────────────────────────────────────────────
-# SOURCE OF LEAD – PIE CHART
+# SOURCE OF LEAD – CIRCULAR (DONUT) CHART
 # ─────────────────────────────────────────────
 lead_source_perf = (
     df_filtered
@@ -261,6 +261,7 @@ st.plotly_chart(
         lead_source_perf,
         names="Source Of Lead",
         values="Sales Quantity",
+        hole=0.45,   # 👈 makes it circular / donut
         title="📌 Source Of Lead Contribution (%)"
     ),
     use_container_width=True
