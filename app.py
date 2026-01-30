@@ -169,7 +169,7 @@ st.plotly_chart(
 )
 
 # ─────────────────────────────────────────────
-# CITY-WISE SALES TREND (VERTICAL – ALL CITIES VISIBLE ✅)
+# CITY-WISE SALES TREND (VERTICAL)
 # ─────────────────────────────────────────────
 city_qty = (
     df_filtered
@@ -191,15 +191,39 @@ fig_city.update_traces(textposition="outside")
 fig_city.update_layout(
     xaxis=dict(
         tickmode="array",
-        tickvals=city_qty["City"],   # force all city names
+        tickvals=city_qty["City"],
         tickangle=-60,
         automargin=True
     ),
     height=650,
-    margin=dict(b=220)              # space for long city names
+    margin=dict(b=220)
 )
 
 st.plotly_chart(fig_city, use_container_width=True)
+
+# ─────────────────────────────────────────────
+# 🔥 TOP 5 SKU (MODEL NAME) – NEW SECTION
+# ─────────────────────────────────────────────
+top_5_sku = (
+    df_filtered
+    .groupby("Model Name", as_index=False)["Sales Quantity"]
+    .sum()
+    .sort_values("Sales Quantity", ascending=False)
+    .head(5)
+)
+
+st.plotly_chart(
+    px.bar(
+        top_5_sku,
+        x="Model Name",
+        y="Sales Quantity",
+        text="Sales Quantity",
+        title="🏆 Top 5 SKU (Model Name) – Sales Quantity"
+    )
+    .update_traces(textposition="outside")
+    .update_layout(xaxis_tickangle=-30),
+    use_container_width=True
+)
 
 # ─────────────────────────────────────────────
 # CUSTOMER TYPE
