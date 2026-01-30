@@ -78,36 +78,30 @@ df = df[df["Year"].between(2024, 2025)]
 # ─────────────────────────────────────────────
 st.sidebar.title("🔍 Filters")
 
-# REGION
-region_list = sorted(df["Region"].dropna().unique())
 selected_region = st.sidebar.multiselect(
     "Region",
-    region_list,
-    default=region_list
+    sorted(df["Region"].dropna().unique()),
+    default=sorted(df["Region"].dropna().unique())
 )
 
-# YEAR
 selected_year = st.sidebar.multiselect(
     "Year",
     sorted(df["Year"].dropna().unique()),
     default=sorted(df["Year"].dropna().unique())
 )
 
-# CITY
 selected_city = st.sidebar.multiselect(
     "City",
     sorted(df["City"].dropna().unique()),
     default=sorted(df["City"].dropna().unique())
 )
 
-# STORE
 selected_store = st.sidebar.multiselect(
     "Store Name",
     sorted(df["Storename"].dropna().unique()),
     default=sorted(df["Storename"].dropna().unique())
 )
 
-# NAME
 selected_name = st.sidebar.multiselect(
     "Name",
     sorted(df["Name"].dropna().unique()),
@@ -121,16 +115,12 @@ df_filtered = df[df["Status"] == "Passed"]
 
 if selected_region:
     df_filtered = df_filtered[df_filtered["Region"].isin(selected_region)]
-
 if selected_year:
     df_filtered = df_filtered[df_filtered["Year"].isin(selected_year)]
-
 if selected_city:
     df_filtered = df_filtered[df_filtered["City"].isin(selected_city)]
-
 if selected_store:
     df_filtered = df_filtered[df_filtered["Storename"].isin(selected_store)]
-
 if selected_name:
     df_filtered = df_filtered[df_filtered["Name"].isin(selected_name)]
 
@@ -179,26 +169,34 @@ st.plotly_chart(
 )
 
 # ─────────────────────────────────────────────
-# CITY-WISE SALES TREND (ALL CITIES VISIBLE ✅)
+# CITY-WISE SALES TREND (VERTICAL – ALL CITIES VISIBLE ✅)
 # ─────────────────────────────────────────────
 city_qty = (
     df_filtered
     .groupby("City", as_index=False)["Sales Quantity"]
     .sum()
-    .sort_values("Sales Quantity", ascending=True)
+    .sort_values("Sales Quantity", ascending=False)
 )
 
 fig_city = px.bar(
     city_qty,
-    x="Sales Quantity",
-    y="City",
-    orientation="h",
+    x="City",
+    y="Sales Quantity",
     text="Sales Quantity",
     title="City-wise Sales Trend (Quantity – Passed Only)"
 )
 
+fig_city.update_traces(textposition="outside")
+
 fig_city.update_layout(
-    height=max(600, len(city_qty) * 28)
+    xaxis=dict(
+        tickmode="array",
+        tickvals=city_qty["City"],   # force all city names
+        tickangle=-60,
+        automargin=True
+    ),
+    height=650,
+    margin=dict(b=220)              # space for long city names
 )
 
 st.plotly_chart(fig_city, use_container_width=True)
@@ -221,76 +219,6 @@ st.plotly_chart(
         text="Sales Quantity",
         title="👥 Sales by Customer Type"
     ).update_layout(xaxis_tickangle=-30),
-    use_container_width=True
-)
-
-# ─────────────────────────────────────────────
-# TOP 5 PRODUCT CATEGORIES
-# ─────────────────────────────────────────────
-colA, colB = st.columns(2)
-
-with colA:
-    cat_qty = (
-        df_filtered.groupby("Product Category", as_index=False)["Sales Quantity"]
-        .sum().sort_values("Sales Quantity", ascending=False).head(5)
-    )
-    st.plotly_chart(
-        px.bar(cat_qty, x="Product Category", y="Sales Quantity", text="Sales Quantity"),
-        use_container_width=True
-    )
-
-with colB:
-    cat_val = (
-        df_filtered.groupby("Product Category", as_index=False)["Sales Value"]
-        .sum().sort_values("Sales Value", ascending=False).head(5)
-    )
-    st.plotly_chart(
-        px.bar(cat_val, x="Product Category", y="Sales Value", text="Sales Value"),
-        use_container_width=True
-    )
-
-# ─────────────────────────────────────────────
-# TOP PRODUCTS & STORES
-# ─────────────────────────────────────────────
-colC, colD = st.columns(2)
-
-with colC:
-    top_products = (
-        df_filtered.groupby("Model Name", as_index=False)["Sales Quantity"]
-        .sum().sort_values("Sales Quantity", ascending=False).head(5)
-    )
-    st.plotly_chart(
-        px.bar(top_products, x="Model Name", y="Sales Quantity", text="Sales Quantity"),
-        use_container_width=True
-    )
-
-with colD:
-    top_stores = (
-        df_filtered.groupby("Storename", as_index=False)["Sales Quantity"]
-        .sum().sort_values("Sales Quantity", ascending=False).head(5)
-    )
-    st.plotly_chart(
-        px.bar(top_stores, x="Storename", y="Sales Quantity", text="Sales Quantity"),
-        use_container_width=True
-    )
-
-# ─────────────────────────────────────────────
-# TOP 10 SELLERS
-# ─────────────────────────────────────────────
-leaderboard = (
-    df_filtered.groupby("Name", as_index=False)["Sales Quantity"]
-    .sum().sort_values("Sales Quantity", ascending=False).head(10)
-)
-
-st.plotly_chart(
-    px.bar(
-        leaderboard,
-        x="Sales Quantity",
-        y="Name",
-        orientation="h",
-        text="Sales Quantity",
-        title="🏆 Top 10 Sellers"
-    ).update_layout(yaxis=dict(autorange="reversed")),
     use_container_width=True
 )
 
