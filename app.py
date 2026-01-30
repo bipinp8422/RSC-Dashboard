@@ -192,8 +192,8 @@ fig_trend.add_trace(go.Scatter(
 fig_trend.update_layout(
     title="Monthly Quantity vs Sales Value Trend",
     xaxis_title="Month",
-    yaxis=dict(title="Sales Quantity", titlefont=dict(color='#c00000')),
-    yaxis2=dict(title="Sales Value (₹)", overlaying='y', side='right', titlefont=dict(color='#1f77b4')),
+    yaxis=dict(title=dict(text="Sales Quantity", font=dict(color='#c00000'))),
+    yaxis2=dict(title=dict(text="Sales Value (₹)", font=dict(color='#1f77b4')), overlaying='y', side='right'),
     template="plotly_white",
     legend=dict(orientation="h", yanchor="bottom", y=1.02),
     height=420
