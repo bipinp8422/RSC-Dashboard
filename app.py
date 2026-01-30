@@ -68,7 +68,7 @@ df["Month_Name"] = df[DATE_COL].dt.strftime("%b")
 df = df[df["Year"].between(2024, 2025)]
 
 # ─────────────────────────────────────────────
-# SIDEBAR FILTERS (ONLY DATA FILTERS)
+# SIDEBAR FILTERS
 # ─────────────────────────────────────────────
 st.sidebar.title("🔍 Filters")
 
@@ -248,23 +248,20 @@ st.plotly_chart(
 )
 
 # ─────────────────────────────────────────────
-# SOURCE OF LEAD PERFORMANCE (STATIC)
+# SOURCE OF LEAD – PIE CHART
 # ─────────────────────────────────────────────
 lead_source_perf = (
     df_filtered
     .groupby("Source Of Lead", as_index=False)["Sales Quantity"]
     .sum()
-    .sort_values("Sales Quantity", ascending=False)
 )
 
 st.plotly_chart(
-    px.bar(
+    px.pie(
         lead_source_perf,
-        x="Sales Quantity",
-        y="Source Of Lead",
-        orientation="h",
-        text="Sales Quantity",
-        title="📌 Source Of Lead vs Sales Quantity"
-    ).update_layout(yaxis=dict(autorange="reversed")),
+        names="Source Of Lead",
+        values="Sales Quantity",
+        title="📌 Source Of Lead Contribution (%)"
+    ),
     use_container_width=True
 )
