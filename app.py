@@ -103,13 +103,10 @@ df_filtered = df[df["Status"] == "Passed"]
 
 if selected_year:
     df_filtered = df_filtered[df_filtered["Year"].isin(selected_year)]
-
 if selected_city:
     df_filtered = df_filtered[df_filtered["City"].isin(selected_city)]
-
 if selected_store:
     df_filtered = df_filtered[df_filtered["Storename"].isin(selected_store)]
-
 if selected_name:
     df_filtered = df_filtered[df_filtered["Name"].isin(selected_name)]
 
@@ -156,38 +153,32 @@ st.plotly_chart(
 )
 
 # ─────────────────────────────────────────────
-# CUSTOMER TYPE 2 – HISTORICAL CHART
+# CUSTOMER TYPE 2 – SEPARATE CHART (NO MONTH)
 # ─────────────────────────────────────────────
 if "Customer Type 2" not in df_filtered.columns:
     st.error("❌ 'Customer Type 2' column not found in data")
-    st.stop()
+else:
+    cust_type_summary = (
+        df_filtered
+        .groupby("Customer Type 2", as_index=False)["Sales Quantity"]
+        .sum()
+        .sort_values("Sales Quantity", ascending=False)
+    )
 
-cust_type_hist = (
-    df_filtered
-    .groupby(
-        ["Year", "Month_No", "Month_Name", "Customer Type 2"],
-        as_index=False
-    )["Sales Quantity"]
-    .sum()
-    .sort_values(["Year", "Month_No"])
-)
-
-st.plotly_chart(
-    px.bar(
-        cust_type_hist,
-        x="Month_Name",
-        y="Sales Quantity",
-        color="Customer Type 2",
-        text_auto=True,
-        title="📊 Month-wise Sales by Customer Type (Historical)"
-    ).update_layout(
-        barmode="stack",
-        xaxis_tickangle=-30,
-        xaxis_title="Month",
-        yaxis_title="Sales Quantity"
-    ),
-    use_container_width=True
-)
+    st.plotly_chart(
+        px.bar(
+            cust_type_summary,
+            x="Customer Type 2",
+            y="Sales Quantity",
+            text="Sales Quantity",
+            title="👥 Sales by Customer Type"
+        ).update_layout(
+            xaxis_title="Customer Type",
+            yaxis_title="Sales Quantity",
+            xaxis_tickangle=-30
+        ),
+        use_container_width=True
+    )
 
 # ─────────────────────────────────────────────
 # TOP 5 PRODUCT CATEGORIES – QTY & VALUE
