@@ -103,10 +103,13 @@ df_filtered = df[df["Status"] == "Passed"]
 
 if selected_year:
     df_filtered = df_filtered[df_filtered["Year"].isin(selected_year)]
+
 if selected_city:
     df_filtered = df_filtered[df_filtered["City"].isin(selected_city)]
+
 if selected_store:
     df_filtered = df_filtered[df_filtered["Storename"].isin(selected_store)]
+
 if selected_name:
     df_filtered = df_filtered[df_filtered["Name"].isin(selected_name)]
 
@@ -118,8 +121,10 @@ def load_logo():
     return Image.open("canon-press-centre-canon-logo.png")
 
 col1, col2 = st.columns([0.15, 0.85])
+
 with col1:
     st.image(load_logo(), width=140)
+
 with col2:
     st.markdown(
         "<h1 style='margin-bottom:0'>RSC Sales Performance Dashboard</h1>",
@@ -151,15 +156,53 @@ st.plotly_chart(
 )
 
 # ─────────────────────────────────────────────
+# CUSTOMER TYPE 2 – HISTORICAL CHART
+# ─────────────────────────────────────────────
+if "Customer Type 2" not in df_filtered.columns:
+    st.error("❌ 'Customer Type 2' column not found in data")
+    st.stop()
+
+cust_type_hist = (
+    df_filtered
+    .groupby(
+        ["Year", "Month_No", "Month_Name", "Customer Type 2"],
+        as_index=False
+    )["Sales Quantity"]
+    .sum()
+    .sort_values(["Year", "Month_No"])
+)
+
+st.plotly_chart(
+    px.bar(
+        cust_type_hist,
+        x="Month_Name",
+        y="Sales Quantity",
+        color="Customer Type 2",
+        text_auto=True,
+        title="📊 Month-wise Sales by Customer Type (Historical)"
+    ).update_layout(
+        barmode="stack",
+        xaxis_tickangle=-30,
+        xaxis_title="Month",
+        yaxis_title="Sales Quantity"
+    ),
+    use_container_width=True
+)
+
+# ─────────────────────────────────────────────
 # TOP 5 PRODUCT CATEGORIES – QTY & VALUE
 # ─────────────────────────────────────────────
 colA, colB = st.columns(2)
 
 with colA:
     cat_qty = (
-        df_filtered.groupby("Product Category", as_index=False)["Sales Quantity"]
-        .sum().sort_values("Sales Quantity", ascending=False).head(5)
+        df_filtered
+        .groupby("Product Category", as_index=False)["Sales Quantity"]
+        .sum()
+        .sort_values("Sales Quantity", ascending=False)
+        .head(5)
     )
+
     st.plotly_chart(
         px.bar(
             cat_qty,
@@ -173,9 +216,13 @@ with colA:
 
 with colB:
     cat_val = (
-        df_filtered.groupby("Product Category", as_index=False)["Sales Value"]
-        .sum().sort_values("Sales Value", ascending=False).head(5)
+        df_filtered
+        .groupby("Product Category", as_index=False)["Sales Value"]
+        .sum()
+        .sort_values("Sales Value", ascending=False)
+        .head(5)
     )
+
     st.plotly_chart(
         px.bar(
             cat_val,
@@ -194,9 +241,13 @@ colC, colD = st.columns(2)
 
 with colC:
     top_products = (
-        df_filtered.groupby("Model Name", as_index=False)["Sales Quantity"]
-        .sum().sort_values("Sales Quantity", ascending=False).head(5)
+        df_filtered
+        .groupby("Model Name", as_index=False)["Sales Quantity"]
+        .sum()
+        .sort_values("Sales Quantity", ascending=False)
+        .head(5)
     )
+
     st.plotly_chart(
         px.bar(
             top_products,
@@ -210,9 +261,13 @@ with colC:
 
 with colD:
     top_stores = (
-        df_filtered.groupby("Storename", as_index=False)["Sales Quantity"]
-        .sum().sort_values("Sales Quantity", ascending=False).head(5)
+        df_filtered
+        .groupby("Storename", as_index=False)["Sales Quantity"]
+        .sum()
+        .sort_values("Sales Quantity", ascending=False)
+        .head(5)
     )
+
     st.plotly_chart(
         px.bar(
             top_stores,
@@ -248,7 +303,7 @@ st.plotly_chart(
 )
 
 # ─────────────────────────────────────────────
-# SOURCE OF LEAD – CIRCULAR (DONUT) CHART
+# SOURCE OF LEAD – DONUT CHART
 # ─────────────────────────────────────────────
 lead_source_perf = (
     df_filtered
@@ -261,7 +316,7 @@ st.plotly_chart(
         lead_source_perf,
         names="Source Of Lead",
         values="Sales Quantity",
-        hole=0.45,   # 👈 makes it circular / donut
+        hole=0.45,
         title="📌 Source Of Lead Contribution (%)"
     ),
     use_container_width=True
