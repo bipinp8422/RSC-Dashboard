@@ -24,19 +24,29 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ─────────────────────────────────────────────
+# FILE UPLOAD
+# ─────────────────────────────────────────────
+st.sidebar.header("📂 Data Upload")
+uploaded_file = st.sidebar.file_uploader("Upload your Excel file (.xlsb)", type=["xlsb"])
+
+if uploaded_file is None:
+    st.warning("Please upload the Excel file to proceed.")
+    st.stop()
+
+# ─────────────────────────────────────────────
 # DATA LOADING & PREPROCESSING
 # ─────────────────────────────────────────────
 @st.cache_data(show_spinner="Loading data...")
-def load_data():
+def load_data(file):
     df = pd.read_excel(
-        "MOM RSC Performance_Jan'24 To Dec'25- North South_Region V1.xlsb",
+        file,
         sheet_name="RAW data",
         skiprows=1,
         engine="pyxlsb"
     )
     return df
 
-df = load_data()
+df = load_data(uploaded_file)
 df.columns = df.columns.astype(str).str.strip()
 
 # Date Handling
