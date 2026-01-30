@@ -4,6 +4,7 @@ from PIL import Image
 import plotly.express as px
 import plotly.graph_objects as go
 from datetime import datetime
+import os  # Added for debugging
 
 # ─────────────────────────────────────────────
 # Page Configuration
@@ -24,16 +25,28 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ─────────────────────────────────────────────
+# DEBUG: List files in current directory
+# ─────────────────────────────────────────────
+st.sidebar.header("Debug Info")
+st.sidebar.write("Files in current directory:")
+st.sidebar.write(os.listdir('.'))
+
+# ─────────────────────────────────────────────
 # DATA LOADING & PREPROCESSING
 # ─────────────────────────────────────────────
 @st.cache_data(show_spinner="Loading data...")
 def load_data():
-    return pd.read_excel(
-        "MOM RSC Performance_Jan'24 To Dec'25- North South_Region V1.xlsb",
-        sheet_name="RAW data",
-        skiprows=1,
-        engine="pyxlsb"
-    )
+    file_path = "MOM RSC Performance_Jan'24 To Dec'25- North South_Region V1.xlsb"
+    try:
+        df = pd.read_excel(
+            file_path,
+            sheet_name="RAW data",
+            skiprows=1,
+            engine="pyxlsb"
+        )
+        return df
+    except FileNotFoundError:
+        raise FileNotFoundError(f"File '{file_path}' not found. Check the debug info for available files.")
 
 df = load_data()
 df.columns = df.columns.astype(str).str.strip()
