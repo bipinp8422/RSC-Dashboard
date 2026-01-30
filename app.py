@@ -79,16 +79,12 @@ df = df[df["Year"].between(2024, 2025)]
 st.sidebar.title("🔍 Filters")
 
 # REGION
-if "Region" not in df.columns:
-    st.sidebar.error("❌ Region column not found")
-    selected_region = []
-else:
-    region_list = sorted(df["Region"].dropna().unique())
-    selected_region = st.sidebar.multiselect(
-        "Region",
-        region_list,
-        default=region_list
-    )
+region_list = sorted(df["Region"].dropna().unique())
+selected_region = st.sidebar.multiselect(
+    "Region",
+    region_list,
+    default=region_list
+)
 
 # YEAR
 selected_year = st.sidebar.multiselect(
@@ -176,6 +172,29 @@ st.plotly_chart(
         y="Sales Quantity",
         text="Sales Quantity",
         title="Month-wise Sales Trend (Quantity – Passed Only)"
+    )
+    .update_traces(textposition="inside")
+    .update_layout(xaxis_tickangle=-30),
+    use_container_width=True
+)
+
+# ─────────────────────────────────────────────
+# CITY-WISE SALES TREND  ✅ ADDED
+# ─────────────────────────────────────────────
+city_qty = (
+    df_filtered
+    .groupby("City", as_index=False)["Sales Quantity"]
+    .sum()
+    .sort_values("Sales Quantity", ascending=False)
+)
+
+st.plotly_chart(
+    px.bar(
+        city_qty,
+        x="City",
+        y="Sales Quantity",
+        text="Sales Quantity",
+        title="City-wise Sales Trend (Quantity – Passed Only)"
     )
     .update_traces(textposition="inside")
     .update_layout(xaxis_tickangle=-30),
