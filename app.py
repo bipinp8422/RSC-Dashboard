@@ -32,6 +32,12 @@ df = load_data()
 df.columns = df.columns.astype(str).str.strip()
 
 # ─────────────────────────────────────────────
+# CLEAN REGION COLUMN
+# ─────────────────────────────────────────────
+if "Region" in df.columns:
+    df["Region"] = df["Region"].astype(str).str.strip()
+
+# ─────────────────────────────────────────────
 # DATE COLUMN DETECTION
 # ─────────────────────────────────────────────
 possible_date_cols = [
@@ -72,35 +78,40 @@ df = df[df["Year"].between(2024, 2025)]
 # ─────────────────────────────────────────────
 st.sidebar.title("🔍 Filters")
 
-# REGION FILTER
+# REGION
 if "Region" not in df.columns:
     st.sidebar.error("❌ Region column not found")
     selected_region = []
 else:
+    region_list = sorted(df["Region"].dropna().unique())
     selected_region = st.sidebar.multiselect(
         "Region",
-        sorted(df["Region"].dropna().unique()),
-        default=sorted(df["Region"].dropna().unique())
+        region_list,
+        default=region_list
     )
 
+# YEAR
 selected_year = st.sidebar.multiselect(
     "Year",
     sorted(df["Year"].dropna().unique()),
     default=sorted(df["Year"].dropna().unique())
 )
 
+# CITY
 selected_city = st.sidebar.multiselect(
     "City",
     sorted(df["City"].dropna().unique()),
     default=sorted(df["City"].dropna().unique())
 )
 
+# STORE
 selected_store = st.sidebar.multiselect(
     "Store Name",
     sorted(df["Storename"].dropna().unique()),
     default=sorted(df["Storename"].dropna().unique())
 )
 
+# NAME
 selected_name = st.sidebar.multiselect(
     "Name",
     sorted(df["Name"].dropna().unique()),
@@ -146,6 +157,7 @@ with col2:
     )
 
 st.markdown(f"**Last Updated:** {datetime.now().strftime('%d %B %Y')}")
+st.markdown(f"**Selected Region:** {', '.join(selected_region)}")
 
 # ─────────────────────────────────────────────
 # MONTH-WISE SALES TREND
@@ -164,13 +176,14 @@ st.plotly_chart(
         y="Sales Quantity",
         text="Sales Quantity",
         title="Month-wise Sales Trend (Quantity – Passed Only)"
-    ).update_traces(textposition="inside")
-     .update_layout(xaxis_tickangle=-30),
+    )
+    .update_traces(textposition="inside")
+    .update_layout(xaxis_tickangle=-30),
     use_container_width=True
 )
 
 # ─────────────────────────────────────────────
-# CUSTOMER TYPE 2 – SEPARATE CHART
+# CUSTOMER TYPE
 # ─────────────────────────────────────────────
 cust_type_summary = (
     df_filtered
@@ -191,7 +204,7 @@ st.plotly_chart(
 )
 
 # ─────────────────────────────────────────────
-# TOP 5 PRODUCT CATEGORIES – QTY & VALUE
+# TOP 5 PRODUCT CATEGORIES
 # ─────────────────────────────────────────────
 colA, colB = st.columns(2)
 
@@ -241,7 +254,7 @@ with colD:
     )
 
 # ─────────────────────────────────────────────
-# TOP 10 SELLERS – LEADERSHIP BOARD
+# TOP 10 SELLERS
 # ─────────────────────────────────────────────
 leaderboard = (
     df_filtered.groupby("Name", as_index=False)["Sales Quantity"]
@@ -261,7 +274,7 @@ st.plotly_chart(
 )
 
 # ─────────────────────────────────────────────
-# SOURCE OF LEAD – DONUT CHART
+# SOURCE OF LEAD
 # ─────────────────────────────────────────────
 lead_source_perf = (
     df_filtered.groupby("Source Of Lead", as_index=False)["Sales Quantity"]
