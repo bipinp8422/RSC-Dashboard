@@ -202,7 +202,7 @@ fig_city.update_layout(
 st.plotly_chart(fig_city, use_container_width=True)
 
 # ─────────────────────────────────────────────
-# 🔥 TOP 5 SKU (MODEL NAME) – NEW SECTION
+# TOP 5 SKU (MODEL NAME)
 # ─────────────────────────────────────────────
 top_5_sku = (
     df_filtered
@@ -219,6 +219,30 @@ st.plotly_chart(
         y="Sales Quantity",
         text="Sales Quantity",
         title="🏆 Top 5 SKU (Model Name) – Sales Quantity"
+    )
+    .update_traces(textposition="outside")
+    .update_layout(xaxis_tickangle=-30),
+    use_container_width=True
+)
+
+# ─────────────────────────────────────────────
+# 🏬 TOP 5 STORES (BY SALES QUANTITY) ✅ NEW
+# ─────────────────────────────────────────────
+top_5_store = (
+    df_filtered
+    .groupby("Storename", as_index=False)["Sales Quantity"]
+    .sum()
+    .sort_values("Sales Quantity", ascending=False)
+    .head(5)
+)
+
+st.plotly_chart(
+    px.bar(
+        top_5_store,
+        x="Storename",
+        y="Sales Quantity",
+        text="Sales Quantity",
+        title="🏬 Top 5 Stores – Sales Quantity"
     )
     .update_traces(textposition="outside")
     .update_layout(xaxis_tickangle=-30),
