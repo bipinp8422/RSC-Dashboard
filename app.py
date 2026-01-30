@@ -2,58 +2,37 @@ import streamlit as st
 import pandas as pd
 from PIL import Image
 import plotly.express as px
-import plotly.graph_objects as go
 from datetime import datetime
-import os
 
 # ─────────────────────────────────────────────
-# PAGE CONFIG
+# Page configuration
 # ─────────────────────────────────────────────
 st.set_page_config(
-    page_title="Retail Sales Performance Dashboard",
-    page_icon="🛍️",
+    page_title="RSC Sales Dashboard",
     layout="wide"
 )
-
-# Custom CSS
-st.markdown("""
-<style>
-.main {background-color: #f8f9fa;}
-.metric-card {background-color: white; padding: 15px; border-radius: 10px;}
-h1 {color: #c00000 !important;}
-</style>
-""", unsafe_allow_html=True)
-
-# ─────────────────────────────────────────────
-# SIDEBAR – FILE UPLOADER
-# ─────────────────────────────────────────────
-st.sidebar.header("📂 Upload Sales File")
-uploaded_file = st.sidebar.file_uploader(
-    "Upload XLSB file",
-    type=["xlsb"]
-)
-
-if uploaded_file is None:
-    st.warning("⬅️ Please upload the sales XLSB file to continue.")
-    st.stop()
 
 # ─────────────────────────────────────────────
 # DATA LOADING
 # ─────────────────────────────────────────────
 @st.cache_data(show_spinner="Loading data...")
-def load_data(file):
+def load_data():
     return pd.read_excel(
-        file,
+        "MOM RSC Performance_Jan'24 To Dec'25- North  South_Region V1.xlsb",
         sheet_name="RAW data",
         skiprows=1,
         engine="pyxlsb"
     )
 
-df = load_data(uploaded_file)
+df = load_data()
+
+# ─────────────────────────────────────────────
+# CLEAN COLUMN NAMES
+# ─────────────────────────────────────────────
 df.columns = df.columns.astype(str).str.strip()
 
 # ─────────────────────────────────────────────
-# DATE HANDLING
+# DATE COLUMN DETECTION
 # ─────────────────────────────────────────────
 possible_date_cols = [
     "Refer Date", "ReferDate", "Reference Date",
@@ -66,6 +45,9 @@ if DATE_COL is None:
     st.error("❌ Date column not found")
     st.stop()
 
+# ─────────────────────────────────────────────
+# DATE CONVERSION
+# ─────────────────────────────────────────────
 if pd.api.types.is_numeric_dtype(df[DATE_COL]):
     df[DATE_COL] = pd.to_datetime(
         df[DATE_COL],
@@ -76,22 +58,24 @@ if pd.api.types.is_numeric_dtype(df[DATE_COL]):
 else:
     df[DATE_COL] = pd.to_datetime(df[DATE_COL], errors="coerce")
 
-df = df.dropna(subset=[DATE_COL])
-df = df[df[DATE_COL].dt.year.between(2024, 2025)]
+# ─────────────────────────────────────────────
+# YEAR & MONTH
+# ─────────────────────────────────────────────
+df["Year"] = df[DATE_COL].dt.year
+df["Month_No"] = df[DATE_COL].dt.month
+df["Month_Name"] = df[DATE_COL].dt.strftime("%b")
+
+df = df[df["Year"].between(2024, 2025)]
 
 # ─────────────────────────────────────────────
 # SIDEBAR FILTERS
 # ─────────────────────────────────────────────
-st.sidebar.header("🔍 Dashboard Filters")
+st.sidebar.title("🔍 Filters")
 
-min_date = df[DATE_COL].min().date()
-max_date = df[DATE_COL].max().date()
-
-date_range = st.sidebar.date_input(
-    "Select Date Range",
-    [min_date, max_date],
-    min_value=min_date,
-    max_value=max_date
+selected_year = st.sidebar.multiselect(
+    "Year",
+    sorted(df["Year"].dropna().unique()),
+    default=sorted(df["Year"].dropna().unique())
 )
 
 selected_city = st.sidebar.multiselect(
@@ -106,14 +90,8 @@ selected_store = st.sidebar.multiselect(
     default=sorted(df["Storename"].dropna().unique())
 )
 
-selected_category = st.sidebar.multiselect(
-    "Product Category",
-    sorted(df["Product Category"].dropna().unique()),
-    default=sorted(df["Product Category"].dropna().unique())
-)
-
 selected_name = st.sidebar.multiselect(
-    "Sales Person",
+    "Name",
     sorted(df["Name"].dropna().unique()),
     default=sorted(df["Name"].dropna().unique())
 )
@@ -121,104 +99,170 @@ selected_name = st.sidebar.multiselect(
 # ─────────────────────────────────────────────
 # APPLY FILTERS
 # ─────────────────────────────────────────────
-df_filtered = df[df["Status"] == "Passed"].copy()
+df_filtered = df[df["Status"] == "Passed"]
 
-if len(date_range) == 2:
-    start_date, end_date = date_range
-    df_filtered = df_filtered[
-        (df_filtered[DATE_COL] >= pd.to_datetime(start_date)) &
-        (df_filtered[DATE_COL] <= pd.to_datetime(end_date))
-    ]
-
+if selected_year:
+    df_filtered = df_filtered[df_filtered["Year"].isin(selected_year)]
 if selected_city:
     df_filtered = df_filtered[df_filtered["City"].isin(selected_city)]
 if selected_store:
     df_filtered = df_filtered[df_filtered["Storename"].isin(selected_store)]
-if selected_category:
-    df_filtered = df_filtered[df_filtered["Product Category"].isin(selected_category)]
 if selected_name:
     df_filtered = df_filtered[df_filtered["Name"].isin(selected_name)]
-
-if df_filtered.empty:
-    st.error("No data found for selected filters.")
-    st.stop()
 
 # ─────────────────────────────────────────────
 # HEADER
 # ─────────────────────────────────────────────
+@st.cache_resource
+def load_logo():
+    return Image.open("canon-press-centre-canon-logo.png")
+
 col1, col2 = st.columns([0.15, 0.85])
-
 with col1:
-    try:
-        st.image(Image.open("canon-press-centre-canon-logo.png"), width=150)
-    except:
-        st.markdown("**Canon**")
-
+    st.image(load_logo(), width=140)
 with col2:
-    st.markdown("<h1>Retail Sales Performance Dashboard</h1>", unsafe_allow_html=True)
-    st.caption(f"Last Updated: {datetime.now().strftime('%d %B %Y, %I:%M %p')}")
+    st.markdown(
+        "<h1 style='margin-bottom:0'>RSC Sales Performance Dashboard</h1>",
+        unsafe_allow_html=True
+    )
 
-st.divider()
-
-# ─────────────────────────────────────────────
-# KPI CARDS
-# ─────────────────────────────────────────────
-total_qty = df_filtered["Sales Quantity"].sum()
-total_value = df_filtered["Sales Value"].sum()
-total_orders = len(df_filtered)
-avg_order_value = total_value / total_orders if total_orders else 0
-
-k1, k2, k3, k4 = st.columns(4)
-k1.metric("Total Sales Value", f"₹{total_value:,.0f}")
-k2.metric("Total Quantity Sold", f"{total_qty:,.0f}")
-k3.metric("Total Orders", f"{total_orders:,}")
-k4.metric("Avg Order Value", f"₹{avg_order_value:,.0f}")
-
-st.divider()
+st.markdown(f"**Last Updated:** {datetime.now().strftime('%d %B %Y')}")
 
 # ─────────────────────────────────────────────
-# MONTHLY TREND
+# MONTH-WISE SALES TREND
 # ─────────────────────────────────────────────
-df_filtered["Month_Year"] = df_filtered[DATE_COL].dt.to_period("M").astype(str)
-
-monthly = df_filtered.groupby("Month_Year").agg({
-    "Sales Quantity": "sum",
-    "Sales Value": "sum"
-}).reset_index()
-
-fig_trend = go.Figure()
-fig_trend.add_trace(go.Scatter(x=monthly["Month_Year"], y=monthly["Sales Quantity"],
-                               mode="lines+markers", name="Quantity"))
-fig_trend.add_trace(go.Scatter(x=monthly["Month_Year"], y=monthly["Sales Value"],
-                               mode="lines+markers", name="Sales Value", yaxis="y2"))
-
-fig_trend.update_layout(
-    yaxis2=dict(overlaying="y", side="right"),
-    template="plotly_white",
-    height=420
-)
-
-st.plotly_chart(fig_trend, use_container_width=True)
-
-# ─────────────────────────────────────────────
-# SOURCE OF LEAD – DONUT CHART
-# ─────────────────────────────────────────────
-st.subheader("📌 Source of Lead Distribution")
-
-lead_source = (
-    df_filtered.groupby("Source Of Lead")["Sales Quantity"]
+month_qty = (
+    df_filtered
+    .groupby(["Month_No", "Month_Name"], as_index=False)["Sales Quantity"]
     .sum()
-    .reset_index()
+    .sort_values("Month_No")
 )
 
-fig_pie = px.pie(
-    lead_source,
-    names="Source Of Lead",
-    values="Sales Quantity",
-    hole=0.45
+st.plotly_chart(
+    px.bar(
+        month_qty,
+        x="Month_Name",
+        y="Sales Quantity",
+        text="Sales Quantity",
+        title="Month-wise Sales Trend (Quantity – Passed Only)"
+    ).update_traces(textposition="inside")
+     .update_layout(xaxis_tickangle=-30),
+    use_container_width=True
 )
 
-fig_pie.update_traces(textinfo="percent+label")
-fig_pie.update_layout(template="plotly_white")
+# ─────────────────────────────────────────────
+# TOP 5 PRODUCT CATEGORIES – QTY & VALUE
+# ─────────────────────────────────────────────
+colA, colB = st.columns(2)
 
-st.plotly_chart(fig_pie, use_container_width=True)
+with colA:
+    cat_qty = (
+        df_filtered.groupby("Product Category", as_index=False)["Sales Quantity"]
+        .sum().sort_values("Sales Quantity", ascending=False).head(5)
+    )
+    st.plotly_chart(
+        px.bar(
+            cat_qty,
+            x="Product Category",
+            y="Sales Quantity",
+            text="Sales Quantity",
+            title="Top 5 Product Categories – Quantity"
+        ),
+        use_container_width=True
+    )
+
+with colB:
+    cat_val = (
+        df_filtered.groupby("Product Category", as_index=False)["Sales Value"]
+        .sum().sort_values("Sales Value", ascending=False).head(5)
+    )
+    st.plotly_chart(
+        px.bar(
+            cat_val,
+            x="Product Category",
+            y="Sales Value",
+            text="Sales Value",
+            title="Top 5 Product Categories – Value"
+        ),
+        use_container_width=True
+    )
+
+# ─────────────────────────────────────────────
+# TOP PRODUCTS & STORES
+# ─────────────────────────────────────────────
+colC, colD = st.columns(2)
+
+with colC:
+    top_products = (
+        df_filtered.groupby("Model Name", as_index=False)["Sales Quantity"]
+        .sum().sort_values("Sales Quantity", ascending=False).head(5)
+    )
+    st.plotly_chart(
+        px.bar(
+            top_products,
+            x="Model Name",
+            y="Sales Quantity",
+            text="Sales Quantity",
+            title="Top 5 Best Seller Products"
+        ),
+        use_container_width=True
+    )
+
+with colD:
+    top_stores = (
+        df_filtered.groupby("Storename", as_index=False)["Sales Quantity"]
+        .sum().sort_values("Sales Quantity", ascending=False).head(5)
+    )
+    st.plotly_chart(
+        px.bar(
+            top_stores,
+            x="Storename",
+            y="Sales Quantity",
+            text="Sales Quantity",
+            title="Top 5 Stores"
+        ),
+        use_container_width=True
+    )
+
+# ─────────────────────────────────────────────
+# TOP 10 SELLERS – LEADERSHIP BOARD
+# ─────────────────────────────────────────────
+leaderboard = (
+    df_filtered
+    .groupby("Name", as_index=False)["Sales Quantity"]
+    .sum()
+    .sort_values("Sales Quantity", ascending=False)
+    .head(10)
+)
+
+st.plotly_chart(
+    px.bar(
+        leaderboard,
+        x="Sales Quantity",
+        y="Name",
+        orientation="h",
+        text="Sales Quantity",
+        title="🏆 Top 10 Sellers – Leadership Board"
+    ).update_layout(yaxis=dict(autorange="reversed")),
+    use_container_width=True
+)
+
+# ─────────────────────────────────────────────
+# SOURCE OF LEAD – CIRCULAR (DONUT) CHART
+# ─────────────────────────────────────────────
+lead_source_perf = (
+    df_filtered
+    .groupby("Source Of Lead", as_index=False)["Sales Quantity"]
+    .sum()
+)
+
+st.plotly_chart(
+    px.pie(
+        lead_source_perf,
+        names="Source Of Lead",
+        values="Sales Quantity",
+        hole=0.45,   # 👈 makes it circular / donut
+        title="📌 Source Of Lead Contribution (%)"
+    ),
+    use_container_width=True
+)
