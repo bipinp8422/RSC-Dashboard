@@ -7,7 +7,10 @@ from datetime import datetime
 # ─────────────────────────────────────────────
 # Page configuration
 # ─────────────────────────────────────────────
-st.set_page_config(page_title="RSC Sales Dashboard", layout="wide")
+st.set_page_config(
+    page_title="RSC Sales Dashboard",
+    layout="wide"
+)
 
 # ─────────────────────────────────────────────
 # DATA LOADING
@@ -22,53 +25,74 @@ def load_data():
     )
 
 df = load_data()
+
+# ─────────────────────────────────────────────
+# CLEAN COLUMN NAMES
+# ─────────────────────────────────────────────
 df.columns = df.columns.astype(str).str.strip()
 
 # ─────────────────────────────────────────────
-# DATE HANDLING
+# DATE COLUMN DETECTION
 # ─────────────────────────────────────────────
 possible_date_cols = [
     "Refer Date", "ReferDate", "Reference Date",
     "Ref Date", "Invoice Date", "Date"
 ]
+
 DATE_COL = next((c for c in possible_date_cols if c in df.columns), None)
 
 if DATE_COL is None:
     st.error("❌ Date column not found")
     st.stop()
 
+# ─────────────────────────────────────────────
+# DATE CONVERSION
+# ─────────────────────────────────────────────
 if pd.api.types.is_numeric_dtype(df[DATE_COL]):
-    df[DATE_COL] = pd.to_datetime(df[DATE_COL], unit="D", origin="1899-12-30", errors="coerce")
+    df[DATE_COL] = pd.to_datetime(
+        df[DATE_COL],
+        unit="D",
+        origin="1899-12-30",
+        errors="coerce"
+    )
 else:
     df[DATE_COL] = pd.to_datetime(df[DATE_COL], errors="coerce")
 
+# ─────────────────────────────────────────────
+# YEAR & MONTH
+# ─────────────────────────────────────────────
 df["Year"] = df[DATE_COL].dt.year
 df["Month_No"] = df[DATE_COL].dt.month
 df["Month_Name"] = df[DATE_COL].dt.strftime("%b")
+
 df = df[df["Year"].between(2024, 2025)]
 
 # ─────────────────────────────────────────────
-# SIDEBAR FILTERS (DATA ONLY)
+# SIDEBAR FILTERS (ONLY DATA FILTERS)
 # ─────────────────────────────────────────────
 st.sidebar.title("🔍 Filters")
 
 selected_year = st.sidebar.multiselect(
-    "Year", sorted(df["Year"].dropna().unique()),
+    "Year",
+    sorted(df["Year"].dropna().unique()),
     default=sorted(df["Year"].dropna().unique())
 )
 
 selected_city = st.sidebar.multiselect(
-    "City", sorted(df["City"].dropna().unique()),
+    "City",
+    sorted(df["City"].dropna().unique()),
     default=sorted(df["City"].dropna().unique())
 )
 
 selected_store = st.sidebar.multiselect(
-    "Store Name", sorted(df["Storename"].dropna().unique()),
+    "Store Name",
+    sorted(df["Storename"].dropna().unique()),
     default=sorted(df["Storename"].dropna().unique())
 )
 
 selected_name = st.sidebar.multiselect(
-    "Name", sorted(df["Name"].dropna().unique()),
+    "Name",
+    sorted(df["Name"].dropna().unique()),
     default=sorted(df["Name"].dropna().unique())
 )
 
@@ -97,72 +121,150 @@ col1, col2 = st.columns([0.15, 0.85])
 with col1:
     st.image(load_logo(), width=140)
 with col2:
-    st.markdown("<h1>RSC Sales Performance Dashboard</h1>", unsafe_allow_html=True)
+    st.markdown(
+        "<h1 style='margin-bottom:0'>RSC Sales Performance Dashboard</h1>",
+        unsafe_allow_html=True
+    )
 
 st.markdown(f"**Last Updated:** {datetime.now().strftime('%d %B %Y')}")
 
 # ─────────────────────────────────────────────
 # MONTH-WISE SALES TREND
 # ─────────────────────────────────────────────
-st.subheader("📅 Month-wise Sales Trend")
-chart_type_month = st.selectbox("Chart Type", ["Bar", "Line", "Area"], key="month")
-
 month_qty = (
-    df_filtered.groupby(["Month_No", "Month_Name"], as_index=False)["Sales Quantity"]
-    .sum().sort_values("Month_No")
+    df_filtered
+    .groupby(["Month_No", "Month_Name"], as_index=False)["Sales Quantity"]
+    .sum()
+    .sort_values("Month_No")
 )
 
-if chart_type_month == "Bar":
-    fig = px.bar(month_qty, x="Month_Name", y="Sales Quantity", text="Sales Quantity")
-elif chart_type_month == "Line":
-    fig = px.line(month_qty, x="Month_Name", y="Sales Quantity", markers=True)
-else:
-    fig = px.area(month_qty, x="Month_Name", y="Sales Quantity")
-
-st.plotly_chart(fig, use_container_width=True)
+st.plotly_chart(
+    px.bar(
+        month_qty,
+        x="Month_Name",
+        y="Sales Quantity",
+        text="Sales Quantity",
+        title="Month-wise Sales Trend (Quantity – Passed Only)"
+    ).update_traces(textposition="inside")
+     .update_layout(xaxis_tickangle=-30),
+    use_container_width=True
+)
 
 # ─────────────────────────────────────────────
-# TOP 10 SELLERS – LEADERSHIP
+# TOP 5 PRODUCT CATEGORIES – QTY & VALUE
 # ─────────────────────────────────────────────
-st.subheader("🏆 Top 10 Sellers – Leadership Board")
-chart_type_leader = st.selectbox("Chart Type", ["Bar", "Pie"], key="leader")
+colA, colB = st.columns(2)
 
+with colA:
+    cat_qty = (
+        df_filtered.groupby("Product Category", as_index=False)["Sales Quantity"]
+        .sum().sort_values("Sales Quantity", ascending=False).head(5)
+    )
+    st.plotly_chart(
+        px.bar(
+            cat_qty,
+            x="Product Category",
+            y="Sales Quantity",
+            text="Sales Quantity",
+            title="Top 5 Product Categories – Quantity"
+        ),
+        use_container_width=True
+    )
+
+with colB:
+    cat_val = (
+        df_filtered.groupby("Product Category", as_index=False)["Sales Value"]
+        .sum().sort_values("Sales Value", ascending=False).head(5)
+    )
+    st.plotly_chart(
+        px.bar(
+            cat_val,
+            x="Product Category",
+            y="Sales Value",
+            text="Sales Value",
+            title="Top 5 Product Categories – Value"
+        ),
+        use_container_width=True
+    )
+
+# ─────────────────────────────────────────────
+# TOP PRODUCTS & STORES
+# ─────────────────────────────────────────────
+colC, colD = st.columns(2)
+
+with colC:
+    top_products = (
+        df_filtered.groupby("Model Name", as_index=False)["Sales Quantity"]
+        .sum().sort_values("Sales Quantity", ascending=False).head(5)
+    )
+    st.plotly_chart(
+        px.bar(
+            top_products,
+            x="Model Name",
+            y="Sales Quantity",
+            text="Sales Quantity",
+            title="Top 5 Best Seller Products"
+        ),
+        use_container_width=True
+    )
+
+with colD:
+    top_stores = (
+        df_filtered.groupby("Storename", as_index=False)["Sales Quantity"]
+        .sum().sort_values("Sales Quantity", ascending=False).head(5)
+    )
+    st.plotly_chart(
+        px.bar(
+            top_stores,
+            x="Storename",
+            y="Sales Quantity",
+            text="Sales Quantity",
+            title="Top 5 Stores"
+        ),
+        use_container_width=True
+    )
+
+# ─────────────────────────────────────────────
+# TOP 10 SELLERS – LEADERSHIP BOARD
+# ─────────────────────────────────────────────
 leaderboard = (
-    df_filtered.groupby("Name", as_index=False)["Sales Quantity"]
-    .sum().sort_values("Sales Quantity", ascending=False).head(10)
+    df_filtered
+    .groupby("Name", as_index=False)["Sales Quantity"]
+    .sum()
+    .sort_values("Sales Quantity", ascending=False)
+    .head(10)
 )
 
-if chart_type_leader == "Bar":
-    fig = px.bar(
-        leaderboard, x="Sales Quantity", y="Name",
-        orientation="h", text="Sales Quantity"
-    ).update_layout(yaxis=dict(autorange="reversed"))
-else:
-    fig = px.pie(leaderboard, names="Name", values="Sales Quantity")
-
-st.plotly_chart(fig, use_container_width=True)
-
-# ─────────────────────────────────────────────
-# SOURCE OF LEAD PERFORMANCE (NO FILTER)
-# ─────────────────────────────────────────────
-st.subheader("📌 Source Of Lead Performance")
-chart_type_source = st.selectbox("Chart Type", ["Bar", "Line", "Area", "Pie"], key="source")
-
-lead_perf = (
-    df_filtered.groupby("Source Of Lead", as_index=False)["Sales Quantity"]
-    .sum().sort_values("Sales Quantity", ascending=False)
+st.plotly_chart(
+    px.bar(
+        leaderboard,
+        x="Sales Quantity",
+        y="Name",
+        orientation="h",
+        text="Sales Quantity",
+        title="🏆 Top 10 Sellers – Leadership Board"
+    ).update_layout(yaxis=dict(autorange="reversed")),
+    use_container_width=True
 )
 
-if chart_type_source == "Bar":
-    fig = px.bar(
-        lead_perf, x="Sales Quantity", y="Source Of Lead",
-        orientation="h", text="Sales Quantity"
-    ).update_layout(yaxis=dict(autorange="reversed"))
-elif chart_type_source == "Line":
-    fig = px.line(lead_perf, x="Source Of Lead", y="Sales Quantity", markers=True)
-elif chart_type_source == "Area":
-    fig = px.area(lead_perf, x="Source Of Lead", y="Sales Quantity")
-else:
-    fig = px.pie(lead_perf, names="Source Of Lead", values="Sales Quantity")
+# ─────────────────────────────────────────────
+# SOURCE OF LEAD PERFORMANCE (STATIC)
+# ─────────────────────────────────────────────
+lead_source_perf = (
+    df_filtered
+    .groupby("Source Of Lead", as_index=False)["Sales Quantity"]
+    .sum()
+    .sort_values("Sales Quantity", ascending=False)
+)
 
-st.plotly_chart(fig, use_container_width=True)
+st.plotly_chart(
+    px.bar(
+        lead_source_perf,
+        x="Sales Quantity",
+        y="Source Of Lead",
+        orientation="h",
+        text="Sales Quantity",
+        title="📌 Source Of Lead vs Sales Quantity"
+    ).update_layout(yaxis=dict(autorange="reversed")),
+    use_container_width=True
+)
